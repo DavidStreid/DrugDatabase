@@ -10,61 +10,39 @@
         <link rel="stylesheet" href="http://code.jquery.com/ui/1.11.1/themes/smoothness/jquery-ui.css">
         <script src="http://code.jquery.com/jquery-1.10.2.js"></script>
         <script src="http://code.jquery.com/ui/1.11.1/jquery-ui.js"></script>
-
         <!--Create MyPage module that allows for access of values outside of the head-->
-        <script id = "availableTags">
-            
-        var availableTags = []
-        var MyPage = (function($) { 
-            //Searchable List of drugs
-     
-            /*Create drugs
-            for (var i=0; i<25; i++){
-                constant = Math.floor(Math.random()*500);
-                rel = ["drug" + (i+1), constant];
-                availableTags.push(rel);
-            }
-            */
-                
-            //Initializes tag function
-            var init = function()
-            {
-                $( "#tags" )
-                    //AUTOCOMPLETE FEATURE DISABLED
-                    .autocomplete({
-                        source: availableTags,
-                        minLength: 2,
-                        disabled: false,
-                    })  
-            };
-            
-            //MyPage Module will return available tags & initialize those tags
-            return {
-                init: init,
-                availableTags: availableTags
-            }
-        })(jQuery); // Puts correct version of jQuery into MyPage module through function($)
-            
-        //TAB-DELIMITED PARSER
-        //Takes in a tab-delimited .txt file and parses each line - extracting each element
-        <?php
-            $myfile = fopen("cumc_product_num_orders_num_patients.txt", "r") or die("Unable to open file!");
-            if ($myfile) {
-                while (($line = fgets($myfile)) !== false) {
-                    $x = explode(chr(9), $line); // Tab = Ascii 9
-                    $CODE = $x[0];
-                    $PRODUCT_NAME = $x[1];
-                    $NUM_ORDERS = $x[2];
-                    $NUM_PATIENTS = $x[3];
-                    $DRUG = array($CODE, $PRODUCT_NAME, $NUM_ORDERS, $NUM_PATIENTS);
-                    availableTags.push($DRUG);
+        
+        <script>
+            var MyPage = (function($) 
+            { 
+                var dL = [];
+                var init = function()
+                {
+                    //Get .txt File
+                    function reqListener() {
+                        console.log(this.responseText);
+                    }
+                    var oReq = new XMLHttpRequest(); //New request object
+                    oReq.onload = function(){
+                        dL= JSON.parse(this.responseText); // Assign aT the JSON model - Can be accessed as array
+                        oReq.open("get", "readFile.php", true);
+                        oReq.send();
+                        console.log(dL);
+                    }
+                    $( "#tags" )
+                        //AUTOCOMPLETE FEATURE DISABLED
+                        .autocomplete({
+                            source: dL,
+                            minLength: 4,
+                            disabled: false,
+                        })  
+                };
+                //MyPage Module will return available tags & initialize those tags
+                return {
+                    init: init,
+                    availableTags: dL
                 }
-            } else {
-                echo "Error reading File";
-            } 
-            fclose($myfile);
-        ?>       
-                
+            })(jQuery); // Puts correct version of jQuery into MyPage module through function($) 
         </script>
 
         <!--CSS BIT -->
@@ -184,11 +162,22 @@
         <!-- JAVASCRIPT -->
 		<script text="text/javascript">
         //Comment below shows access to module from <head></head>
-        //console.log(MyPage.availableTags[i]);
 
         //Initialize the MyPage Module
         MyPage.init(); 
         
+        //Get .txt File
+        function reqListener() {
+            console.log(this.responseText);
+        }
+        var oReq = new XMLHttpRequest(); //New request object
+        oReq.onload = function(){
+            MyPage.availableTags = JSON.parse(this.responseText); // Assign aT the JSON model - Can be accessed as array
+            oReq.open("get", "readFile.php", true);
+            oReq.send();
+ 
+            
+            //http://stackoverflow.com/questions/23740548/how-to-pass-variables-and-data-from-php-to-javascript 
         //Creating the Search Box
         var queryList = []; // List of terms 
         $(document).ready(function(){
@@ -202,7 +191,7 @@
             var queryLen;
             var currentLen;
             var repeat;
-            
+
             $("#txt_name").change(function(){
                 $('svg').empty(); // Emptying svg is necessary to clarify queries
                 queryList = [];
@@ -211,14 +200,15 @@
 
                 //Search Logic - search for matching substrings
                 for (i = 0; i < MyPage.availableTags.length; i++){
-                    for(j=0; j + queryLen <= MyPage.availableTags[i][0].length; j++){
-                        subStr = MyPage.availableTags[i][0].substring(j, j+queryLen);
+                    for(j=0; j + queryLen <= MyPage.availableTags[i][1].length; j++){
+                        subStr = MyPage.availableTags[i][1].substring(j, j+queryLen);
                         if (query == subStr){
-                            match = MyPage.availableTags[i][0];
+                            match = MyPage.availableTags[i][1];
                             repeat = false;
                             for (k = 0; k<queryList.length; k++) {
-                                if (match == queryList[k][0]) {
+                                if (match == queryList[k][1]) {
                                     repeat = true;
+                                    console.log("Match!");
                                 }
                             }
                             if (repeat == false) {
@@ -232,7 +222,7 @@
                 makeLabels();
             });
         });
-        
+
         //Define Variables
         var w = 350;
         var h = 1000;
@@ -242,7 +232,7 @@
 
         //Defining maxWidth - the limit of the graph
         var maxWidth = d3.max(MyPage.availableTags, function(d) {
-            return d[3];
+            return d[3]; //# Patients
         });
 
         var xScale = d3.scale.linear()
@@ -267,7 +257,7 @@
             .enter()
             .append("rect")
             .attr({
-                width: function(d) { return (xScale(d[3]))},
+                width: function(d) { return (xScale(d[3]))},//# Patients
                 height: barHeight,
                 fill: function(d){
                     return "rgb(10, 150, " + (Math.floor(d[3]/2)) + ")";
@@ -301,7 +291,7 @@
             .data(queryList)
             .enter()
             .append("text")
-            .text(function(d) {return d[0]})
+            .text(function(d) {return d[1]})//Product Name
             .attr({
                 x: 0,
                 y: function(d,i) {return yScale(i)+buffer},
@@ -310,7 +300,7 @@
                 v: function(d) { return (xScale(d[3]))}
             })
         }
-
+        }
         //Sorting Feature - By magnitude of associated constant with drug
         var sortOrder = false;
 
@@ -322,10 +312,10 @@
                 .sort(function(a,b) 
                 {
                     if (sortOrder) {
-                        return d3.ascending(b[1],a[1]); //
+                        return d3.ascending(b[3],a[3]); //Sorting BARS by #Patients
                     }
                     else {
-                        return d3.ascending(a[1],b[1]);
+                        return d3.ascending(a[3],b[3]);
                     }
                 })
                 //TRANSITIONS
@@ -340,10 +330,10 @@
                 .sort(function(a,b)
                 {
                     if (sortOrder) {
-                        return d3.ascending(b[1],a[1]);
+                        return d3.ascending(b[3],a[3]); // Sorting LABELS by #Patients
                     }
                     else {
-                        return d3.ascending(a[1],b[1]);
+                        return d3.ascending(a[3],b[3]);
                     }
                 })
                 .transition()
@@ -363,7 +353,7 @@
             .on("click", function() {
                 dataset = [];
                 //Create drugs
-                for (var i=0; i<25; i++){
+                for (var i=0; i<176826 ; i++){
                     constant = Math.floor(Math.random()*w);
                     rel = ["drug" + (i+1), constant];
                     dataset.push(rel);
@@ -397,5 +387,6 @@
                             return d[0];
                         });
             });
+        
 		</script>
 	</body>
