@@ -53,15 +53,16 @@
             }
 
             h1 {
-                position: relative;
-                top: 10%;
+                position: absolute;
+                top: 2%;
                 font-size: 40px;
 
             }
 
             #queryBox {
-                position: relative;
-                bottom: 10%;
+                position: absolute;
+                top: 10%;
+                left: 1%;
                 width: 10%;
                 background-color: #3c4543;
                 border-top-left-radius: 5px;
@@ -69,23 +70,11 @@
                 border: 2px solid #000000;
                 font-family: Futura; 
             }
-            #scramble {
-                position: relative;
-                left: 215px;
-                top: 36px;
-                width: 145px;
-                background-color: #3c4543;
-                border-top-left-radius: 5px;
-                border-top-right-radius: 5px;
-                border: 2px solid #000000;
-                font-family: Futura; 
-            }
-
             #sort{
-                position: relative;
-                top: 8px;
-                left: 135px;
-                width: 75px;
+                position: absolute;
+                top: 10%;
+                left: 11%;
+                width: 5%;
                 background-color: #3c4543;
                 border-top-left-radius: 5px;
                 border-top-right-radius: 5px;
@@ -100,25 +89,21 @@
 
 	</head>
 	<body>
-        <!--BUTTON - Generates Random Data-->
-        <div class="buttonex" id="scramble">
-            <button type="button">Generate Random Data</button>
+        <h1>Drug Query Database</h1> 
+        
+        <div id="queryBox">
+            <input type="text" id="txt_name">
         </div>
-
         <!--BUTTON - Sorts Data-->
         <div class="buttonex" id="sort">
             <button type="button">Sort Data</button>
         </div>
-
-        <h1>Drug Query Database</h1>  
-
-        <div id="queryBox">
-            <input type="text" id="txt_name">
+        
+        <!--
+        <div class="glasses">
+            <img src="lab_beaker_full.png">
         </div>
-
-        <div class="glasses" style = "top: 100px;">
-            <img src="lab_beaker_full.png" style="width:380px;height:150px">
-        </div>
+        -->
             
 		<script type="text/javascript"> 
             var MyPage = (function($) { 
@@ -140,24 +125,11 @@
                             echo "Error reading File";
                         }
                         fclose($myfile);
-                        echo json_encode($drugList);    
+                        echo json_encode($drugList);
                     ?>
                 ];
-
-
                 var init = function()
                 {
-                    //Get .txt File
-                    function reqListener() {
-                        console.log(this.responseText);
-                    }
-                    var oReq = new XMLHttpRequest(); //New request object
-                    oReq.onload = function(){
-                        dL= JSON.parse(this.responseText); // Assign aT the JSON model - Can be accessed as array
-                        oReq.open("get", "readFile.php", true);
-                        oReq.send();
-                        console.log(dL);
-                    }
                     $( "#tags" )
                     //AUTOCOMPLETE FEATURE DISABLED
                     .autocomplete({
@@ -171,7 +143,6 @@
                     init: init,
                     availableTags: dL
                 }
-            
             })(jQuery); // Puts correct version of jQuery into MyPage module through function($) 
             
 
@@ -195,22 +166,28 @@
                     query = $('#txt_name').val();
                     queryLen = query.length;
 
+                    /*  MyPage.availableTags - Array
+                        MyPage.availableTags[0] - Array of size MyPage.availableTags[0].length
+                        MyPage.availableTags[0][i] - individual JSON argument
+                        MyPage.availableTags[0][i][1] - Product Name
+                    */
+                    
                     //Search Logic - search for matching substrings
-                    for (i = 0; i < MyPage.availableTags.length; i++){
-                        for(j=0; j + queryLen <= MyPage.availableTags[i][1].length; j++){
-                            subStr = MyPage.availableTags[i][1].substring(j, j+queryLen);
+                    for (i = 0; i < MyPage.availableTags[0].length; i++){
+                        for(j=0; j + queryLen <= MyPage.availableTags[0][i][1].length; j++){
+                        subStr = MyPage.availableTags[0][i][1].substring(j, j+queryLen);
                             if (query == subStr){
-                                match = MyPage.availableTags[i][1];
+                                match = MyPage.availableTags[0][i][1];
                                 repeat = false;
                                 for (k = 0; k<queryList.length; k++) {
                                     if (match == queryList[k][1]) {
                                         repeat = true;
-                                        console.log("Match!");
                                     }
                                 }
                                 if (repeat == false) {
-                                    queryList.push(MyPage.availableTags[i]); 
+                                    queryList.push(MyPage.availableTags[0][i]); 
                                 }
+                                console.log(match);
                             };
                         };
                     };
@@ -228,33 +205,38 @@
             buffer = 10;
 
             //Defining maxWidth - the limit of the graph
-            var maxWidth = d3.max(MyPage.availableTags, function(d) {
-                return d[3]; //# Patients
+            var maxWidth = d3.max(MyPage.availableTags[0], function(d, i) {
+                return parseInt(d[3]); // Order Numbers - Need to parseInt otherwise will return the last value
             });
 
             var xScale = d3.scale.linear()
-            .domain([0, maxWidth])
-            .range([150, w]);
-
+                .domain([0, maxWidth])
+                .range([padding, w]);
+            
+            // Input - 
             var yScale = d3.scale.ordinal()
-            .domain(d3.range(MyPage.availableTags.length))
-            .rangeRoundBands([padding,h], 0.03);
+                .domain(0, MyPage.availableTags[0].length)
+                .range([padding*4,h]);
+                //.domain(d3.range(MyPage.availableTags[0].length)) // number of entries in array
+                //.domain([0, MyPage.availableTags[0].length])
+                //.range([padding*4, h])
+                //.rangeRoundBands([padding,h], 0.95);
 
             var svg = d3.select("body")
-            .append("svg")
-            .attr({
-                width: w,
-                height: h,
+                .append("svg")
+                .attr({
+                    width: w,
+                    height: h,
             });
 
             //Function to make Bars
             var makeBars = function() {
                 svg.selectAll("rect")
-                .data(queryList)
+                .data(queryList)w
                 .enter()
                 .append("rect")
                 .attr({
-                    width: function(d) { return (xScale(d[3]))},//# Patients
+                    width: function(d) { return (xScale(parseInt(d[3])))},//# of Orders
                     height: barHeight,
                     fill: function(d){
                         return "rgb(10, 150, " + (Math.floor(d[3]/2)) + ")";
@@ -294,9 +276,8 @@
                     y: function(d,i) {return yScale(i)+buffer},
                     "font-size": 14,
                     fill: "blue",
-                    v: function(d) { return (xScale(d[3]))}
+                    v: function(d) { return (xScale(parseInt(d[3])))}
                 })
-            }
             }
             //Sorting Feature - By magnitude of associated constant with drug
             var sortOrder = false;
@@ -344,46 +325,5 @@
             .on("click", function() {
                 sortBars();
             })
-
-
-            d3.select("#scramble button")
-            .on("click", function() {
-                dataset = [];
-                //Create drugs
-                for (var i=0; i<176826 ; i++){
-                    constant = Math.floor(Math.random()*w);
-                    rel = ["drug" + (i+1), constant];
-                    dataset.push(rel);
-                }
-
-                svg.selectAll("rect")
-                .data(dataset)
-                .transition()
-                .duration(150) // 250 ms is the default
-                .delay(function(d, i){
-                    return i/dataset.length*1000;
-                })
-                .ease("linear") 
-
-                .attr({
-                    width: function(d) { return (xScale(d[3]))},
-                    height: barHeight,
-                    fill: function(d){
-                        return "rgb(10, 150, " + (Math.floor(d[3]/2)) + ")";
-                    },
-                    y: function(d, i) {return yScale(i)},
-                    x: padding
-                });
-
-                svg.selectAll("text")
-                .data(dataset)
-                .attr({
-                    v: function(d) { return (xScale(d[3]))}
-                })
-                .text(function(d){
-                    return d[0];
-                });
-            });
-            
 	    </script>
 	</body>
