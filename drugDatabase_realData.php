@@ -1,4 +1,4 @@
- <!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en">
     <head>
         <meta charset="utf-8">
@@ -26,7 +26,7 @@
             }
             #tooltip {
                 position: absolute;
-                width: 200px;
+                width: auto;
                 height: auto;
                 padding: 10px;
                 background-color: white;
@@ -53,35 +53,41 @@
             }
 
             h1 {
-                position: absolute;
+                position: relative;
+                left: 1%;
                 top: 2%;
-                font-size: 40px;
-
+                font-size: 50px;
             }
 
             #queryBox {
-                position: absolute;
+                position: relative;
                 top: 10%;
                 left: 1%;
                 width: 10%;
                 background-color: #3c4543;
-                border-top-left-radius: 5px;
-                border-top-right-radius: 5px;
+                border-top-left-radius: 10%;
+                border-top-right-radius: 10%;
                 border: 2px solid #000000;
                 font-family: Futura; 
             }
             #sort{
-                position: absolute;
+                position: relative;
                 top: 10%;
-                left: 11%;
-                width: 5%;
+                left: 1%;
+                width: 10%;
                 background-color: #3c4543;
-                border-top-left-radius: 5px;
-                border-top-right-radius: 5px;
-                border: 2px solid #000000;
                 font-family: Futura; 
+                border-top-left-radius: 10%;
+                border-top-right-radius: 10%;
+                border: 2px solid #000000;
             }
 
+            #enrichment{
+                position: relative;
+                top: 0%;
+                left: 1%;
+                width = 30%;
+            }
             #glasses{
                 position: initial;
             }
@@ -96,15 +102,35 @@
         </div>
         <!--BUTTON - Sorts Data-->
         <div class="buttonex" id="sort">
-            <button type="button">Sort Data</button>
+            <button type="button">Sort By Order Count</button>
         </div>
         
-        <!--
-        <div class="glasses">
-            <img src="lab_beaker_full.png">
+        <div class="buttonex" id="sortPOE">
+            <button type="button">Sort by Patient to Order Ratio</button>
         </div>
-        -->
+        <!--<div class="glasses"><img src="lab_beaker_full.png"></div>-->
             
+        <div id="tooltip" class="hidden">
+            <p><strong>Drug Data</strong></p>
+            <p><span id="value">100</span></p>
+        </div>
+        
+        <div id="enrichment">
+            <input type="text" id="e1" style="width: 90%">
+        </div>
+        <div id="enrichment">
+            <input type="text" id="e2" style="width: 90%">
+        </div>
+        <div id="enrichment">
+            <input type="text" id="e3" style="width: 90%">
+        </div>
+        <div id="enrichment">
+            <input type="text" id="e4" style="width: 90%">
+        </div>
+        <div id="enrichment">
+            <input type="text" id="e5" style="width: 90%">
+        </div>
+        
 		<script type="text/javascript"> 
             var MyPage = (function($) { 
                 var dL = [
@@ -118,7 +144,8 @@
                                 $PRODUCT_NAME = $x[1];
                                 $NUM_ORDERS = $x[2];
                                 $NUM_PATIENTS = $x[3];
-                                $DRUG = array($CODE, $PRODUCT_NAME, $NUM_ORDERS, $NUM_PATIENTS);
+                                $OrderPatient_ENRICHMENT = $x[3]/$x[2];
+                                $DRUG = array($CODE, $PRODUCT_NAME, $NUM_ORDERS, $NUM_PATIENTS, $OrderPatient_ENRICHMENT);
                                 array_push($drugList, $DRUG);
                             }
                         } else {
@@ -129,18 +156,8 @@
                     ?>
                 ];
                 
-                console.log(dL);
+                var init = function(){}; /*{$( "#tags" ).autocomplete({source: dL, minLength: 4,disabled: false,})};*/
                 
-                var init = function()
-                {
-                    $( "#tags" )
-                    //AUTOCOMPLETE FEATURE DISABLED
-                    .autocomplete({
-                        source: dL,
-                        minLength: 4,
-                        disabled: false,
-                    })  
-                };
                 //MyPage Module will return available tags & initialize those tags
                 return {
                     init: init,
@@ -150,10 +167,8 @@
             
 
             //Creating the Search Box
-            var queryList = []; // List of terms 
+            var queryList = [];
             $(document).ready(function(){
-                //get input from search box - finds div id for queryBox and passes user
-                //query into the input as a value
                 $('#txt_name').val('query');
                 var query;
                 var subStr;
@@ -164,17 +179,15 @@
                 var repeat;
 
                 $("#txt_name").change(function(){
-                    $('svg').empty(); // Emptying svg is necessary to clarify queries
+                    $('svg').empty(); // Clears last query
                     queryList = [];
                     query = $('#txt_name').val();
                     queryLen = query.length;
-
                     /*  MyPage.availableTags - Array (MyPage.availableTags.length = 1)
                         MyPage.availableTags[0] - Array of size MyPage.availableTags[0].length
                         MyPage.availableTags[0][i] - individual JSON argument
                         MyPage.availableTags[0][i][1] - Product Name
                     */
-                    
                     //Search Logic - search for matching substrings
                     for (i = 0; i < MyPage.availableTags[0].length; i++){
                         for(j=0; j + queryLen <= MyPage.availableTags[0][i][1].length; j++){
@@ -190,20 +203,19 @@
                                 if (repeat == false) {
                                     queryList.push(MyPage.availableTags[0][i]); 
                                 }
-                                console.log(match);
                             };
                         };
-                    };
-                    //Make Bars & Drug Labels
-                    makeBars();
-                    makeLabels();
+                    };   
+                    //initBars();
+                    makeBars("drugCount");
+                    makeLabels("drugCount");
                 });
             });
-
+            
             //Define Variables
-            var w = 1000;
+            var w = 5000;
             var h = 2000;
-            var padding = 50;
+            var padding = 10;
             barHeight = 20;
             buffer = 10;
 
@@ -212,49 +224,67 @@
                 return parseInt(d[3]); // Order Numbers - Need to parseInt otherwise will return the last value
             });
             
-            // console.log(maxWidth); // returns 192713
-
             var xScale = d3.scale.linear()
                 .domain([0, maxWidth])
-                .range([padding, w]);
+                .range([0, w]);
             
             var yScale = d3.scale.linear()
                 .domain([0, MyPage.availableTags[0].length])
-                .range([padding*4, h]);
+                .range([padding*4, h-(padding*4)]);
             
             var svg = d3.select("body")
                 .append("svg")
                 .attr({
                     width: w,
                     height: h,
-            });
+                });
 
+            var displayEnrichments = function(){
+                $('#enrichment1').val(findEnrichment(2,5));
+                $('#enrichment2').val(findEnrichment(2,5));
+                $('#enrichment3').val(findEnrichment(2,5));
+                $('#enrichment4').val(findEnrichment(2,5));
+                $('#enrichment5').val(findEnrichment(2,5));
+            }
+            
+            /*
+            var initBars = function() {
+                svg.selectAll("rect")
+                .data(queryList)
+                .enter()
+                .append("rect")
+            }
+            */
+            
             //Function to make Bars
-            var makeBars = function() {
+            var makeBars = function(visual) {     
+                if (visual == "drugCount"){i = 3}
+                else if (visual == "patientOrder"){i = 4}
+
                 svg.selectAll("rect")
                 .data(queryList)
                 .enter()
                 .append("rect")
                 .attr({
-                    width: function(d) { return (xScale(parseInt(d[3])))},//# of Orders
+                    width: function(d) { return (xScale(parseInt(d[i])))},//# of Orders
                     height: barHeight,
                     fill: function(d){
-                        return "rgb(10, 150, " + (Math.floor(d[3]/2)) + ")";
+                        return "rgb(10, 150, " + (Math.floor(d[i]/2)) + ")";
                     },
-                    y: function(d, i) {return (yScale(i*40))}, // Adjust input for proper spacing
+                    y: function(d, j) {return (yScale(j*40))}, // Adjust input for proper spacing
                     x: padding
                 })
 
                 //Adding the mouseOver function - Hover to highlight
                 .on("mouseover", function(d) {
-                    var xPosition = w + (680 - xScale(d3.select(this).attr("width")));
-                    var yPosition = parseFloat(d3.select(this).attr("y"));// - h/12;
+                    var xPosition = (xScale(d3.select(this).attr("width")));
+                    var yPosition = 300+ parseFloat(d3.select(this).attr("y"));
 
                     d3.select("#tooltip")
-                    .style("right", xPosition + "px")
-                    .style("top", yPosition + "px")
-                    .select("#value")
-                    .text(d);
+                        .style("right", xPosition + "px")
+                        .style("top", yPosition + "px")
+                        .select("#value")
+                        .text(d);
 
                     d3.select("#tooltip").classed("hidden", false);
                 })
@@ -265,7 +295,10 @@
             }
 
             //Function to makeLabels
-            var makeLabels = function() {
+            var makeLabels = function(visual) {
+                if (visual == "drugCount"){i = 3}
+                else if (visual == "patientOrder"){i = 4}
+                
                 svg.selectAll("text")
                 .data(queryList)
                 .enter()
@@ -273,57 +306,84 @@
                 .text(function(d) {return d[1]})//Product Name
                 .attr({
                     x: padding,
-                    y: function(d,i) {return yScale(i*40)},
+                    y: function(d,j) {return yScale(j*40)},
                     "font-size": 14,
                     fill: "blue",
-                    v: function(d) { return (xScale(parseInt(d[3])))}
+                    v: function(d) { return (xScale(parseInt(d[i])))}
                 })
             }
             //Sorting Feature - By magnitude of associated constant with drug
             var sortOrder = false;
-
-            var sortBars = function() {
-
+            
+            var sortBars = function(sortCondition) {
+                if (sortCondition == "drugCount"){i = 3}
+                else if (sortCondition == "patientOrder"){i = 4}
+                
                 sortOrder = !sortOrder;
                 //Sort BarGraphs by magnitude
                 svg.selectAll("rect")
-                .sort(function(a,b) 
-                      {
+                .sort(function(a,b) {
                     if (sortOrder) {
-                        return d3.ascending(b[3],a[3]); //Sorting BARS by #Patients
+                        return d3.ascending(b[i],a[i]); //Sorting BARS by #Orders
                     }
                     else {
-                        return d3.ascending(a[3],b[3]);
+                        return d3.ascending(a[i],b[i]);
                     }
                 })
                 //TRANSITIONS
                 .transition()
                 .duration(1000)
-                .attr("y", function(d, i) {
-                    return yScale(i*40);
+                .attr("y", function(d, j) {
+                    return yScale(j*40);
                 })
 
                 //Sort Drug Labels
                 svg.selectAll("text")
-                .sort(function(a,b)
-                      {
+                .sort(function(a,b){
                     if (sortOrder) {
-                        return d3.ascending(b[3],a[3]); // Sorting LABELS by #Patients
+                        return d3.ascending(b[i],a[i]); // Sorting LABELS by #Patients
                     }
                     else {
-                        return d3.ascending(a[3],b[3]);
+                        return d3.ascending(a[i],b[i]);
                     }
                 })
                 .transition()
                 .duration(1000)
-                .attr("y", function(d, i) {
-                    return (yScale(i*40));
+                .attr("y", function(d, j) {
+                    return (yScale(j*40));
                 })
             };
 
             d3.select("#sort button")
-            .on("click", function() {
-                sortBars();
-            })
+                .on("click", function() {
+                    sortBars("drugCount");
+                })
+
+            d3.select("#sortPOE button")
+                .on("click", function() {
+                    sortBars("patientOrder");
+                    getEnrichments();
+                })
+            
+            var getEnrichments = function() {
+                var maxEnrichment = new Array(5);
+                queryList.sort(function(a,b){
+                    return d3.descending(a[4], b[4]);
+                })
+                for (i = 0; i< queryList.length; i++){
+                    maxEnrichment[i] =  
+                        "Enrichment Value: " + queryList[i][4] + "; " +
+                        "Code: " + queryList[i][0] + "; " + 
+                        "ProductName: " + queryList[i][1] + "; " + 
+                        "Order: " + queryList[i][2] + "; " + 
+                        "Patient: " + queryList[i][3] + "; "; 
+
+                }
+                $('#e1').val(maxEnrichment[0]);
+                $('#e2').val(maxEnrichment[1]);
+                $('#e3').val(maxEnrichment[2]);
+                $('#e4').val(maxEnrichment[3]);
+                $('#e5').val(maxEnrichment[4]);
+            }
 	    </script>
 	</body>
