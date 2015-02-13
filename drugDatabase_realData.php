@@ -41,6 +41,7 @@
             #tooltip.hidden {
                 display: none;
             }
+            
             #tooltip p {
                 margin: 0;
                 font-family: sans-serif;
@@ -106,7 +107,7 @@
         </div>
         
         <div class="buttonex" id="sortPOE">
-            <button type="button">Sort by Patient to Order Ratio</button>
+            <button type="button">Sort by Order to Patient Ratio</button>
         </div>
         <!--<div class="glasses"><img src="lab_beaker_full.png"></div>-->
             
@@ -144,7 +145,9 @@
                                 $PRODUCT_NAME = $x[1];
                                 $NUM_ORDERS = $x[2];
                                 $NUM_PATIENTS = $x[3];
-                                $OrderPatient_ENRICHMENT = $x[3]/$x[2];
+                                $OrderPatient_ENRICHMENT = $x[2]/$x[3];
+                                $RELATIVE_ENRICHMENT = 0;
+                                
                                 $DRUG = array($CODE, $PRODUCT_NAME, $NUM_ORDERS, $NUM_PATIENTS, $OrderPatient_ENRICHMENT);
                                 array_push($drugList, $DRUG);
                             }
@@ -166,8 +169,13 @@
             })(jQuery); // Puts correct version of jQuery into MyPage module through function($) 
             
 
+            
+            
             //Creating the Search Box
             var queryList = [];
+            
+            var criteria = "drugCount";
+            
             $(document).ready(function(){
                 $('#txt_name').val('query');
                 var query;
@@ -206,21 +214,20 @@
                             };
                         };
                     };   
-                    //initBars();
                     makeBars("drugCount");
                     makeLabels("drugCount");
                 });
             });
             
             //Define Variables
-            var w = 5000;
-            var h = 2000;
-            var padding = 10;
             barHeight = 20;
-            buffer = 10;
-
+            var w = 5000;
+            var h = barHeight*MyPage.availableTags[0].length; // Height to include every entry
+            var buffer = 15;
+            var textbuffer = 40
+            
             //Defining maxWidth - the limit of the graph
-            var maxWidth = d3.max(MyPage.availableTags[0], function(d, i) {
+            var maxWidth = d3.max(MyPage.availableTags[0], function(d) {
                 return parseInt(d[3]); // Order Numbers - Need to parseInt otherwise will return the last value
             });
             
@@ -230,7 +237,7 @@
             
             var yScale = d3.scale.linear()
                 .domain([0, MyPage.availableTags[0].length])
-                .range([padding*4, h-(padding*4)]);
+                .range([buffer*2, h]);
             
             var svg = d3.select("body")
                 .append("svg")
@@ -246,45 +253,55 @@
                 $('#enrichment4').val(findEnrichment(2,5));
                 $('#enrichment5').val(findEnrichment(2,5));
             }
-            
-            /*
-            var initBars = function() {
-                svg.selectAll("rect")
-                .data(queryList)
-                .enter()
-                .append("rect")
+
+            //Finds top 5 enrichments relative to the queryList
+            var getRelativeEnrichments = function(drug, drugArr) {
+                for (i = 0; i < drugArr.length; i++){
+                    drugArr[i][5] = drug[3]/drugArr[i][3];
+                }
+                drugArr.sort(function(a,b){
+                    return d3.descending(a[5], b[5]);
+                })
+                var list = 
+                    drugArr[0] + "; " 
+                + drugArr[1] + "; " 
+                + drugArr[2] + "; " 
+                + drugArr[3] + "; "
+                + drugArr[4];
+
+                return list;
             }
-            */
             
             //Function to make Bars
             var makeBars = function(visual) {     
                 if (visual == "drugCount"){i = 3}
-                else if (visual == "patientOrder"){i = 4}
+                else if (visual == "orderPatient"){i = 4}
 
                 svg.selectAll("rect")
-                .data(queryList)
-                .enter()
-                .append("rect")
-                .attr({
-                    width: function(d) { return (xScale(parseInt(d[i])))},//# of Orders
-                    height: barHeight,
-                    fill: function(d){
-                        return "rgb(10, 150, " + (Math.floor(d[i]/2)) + ")";
-                    },
-                    y: function(d, j) {return (yScale(j*40))}, // Adjust input for proper spacing
-                    x: padding
-                })
+                    .data(queryList)
+                    .enter()
+                    .append("rect")
+                    .attr({
+                        width: function(d) { return (xScale(parseInt(d[i])))},//# of Orders
+                        height: barHeight,
+                        fill: function(d){
+                            return "rgb(10, 150, " + (Math.floor(d[i]/2)) + ")";
+                        },
+                        y: function(d, j) {return (yScale(j))}, // Adjust input for proper spacing
+                        x: buffer
+                    })
 
                 //Adding the mouseOver function - Hover to highlight
                 .on("mouseover", function(d) {
                     var xPosition = (xScale(d3.select(this).attr("width")));
                     var yPosition = 300+ parseFloat(d3.select(this).attr("y"));
-
+                    
                     d3.select("#tooltip")
                         .style("right", xPosition + "px")
                         .style("top", yPosition + "px")
                         .select("#value")
-                        .text(d);
+                        .text(getRelativeEnrichments(d, queryList));
+                        //.text(d)
 
                     d3.select("#tooltip").classed("hidden", false);
                 })
@@ -297,16 +314,15 @@
             //Function to makeLabels
             var makeLabels = function(visual) {
                 if (visual == "drugCount"){i = 3}
-                else if (visual == "patientOrder"){i = 4}
-                
+                else if (visual == "orderPatient"){i = 4}
                 svg.selectAll("text")
                 .data(queryList)
                 .enter()
                 .append("text")
                 .text(function(d) {return d[1]})//Product Name
                 .attr({
-                    x: padding,
-                    y: function(d,j) {return yScale(j*40)},
+                    x: buffer,
+                    y: function(d,j) {return yScale(j)+buffer},
                     "font-size": 14,
                     fill: "blue",
                     v: function(d) { return (xScale(parseInt(d[i])))}
@@ -316,41 +332,63 @@
             var sortOrder = false;
             
             var sortBars = function(sortCondition) {
-                if (sortCondition == "drugCount"){i = 3}
-                else if (sortCondition == "patientOrder"){i = 4}
+                if (sortCondition == "drugCount"){
+                    i = 3;
+                    /*
+                    if (criteria != "drugCount"){
+                        makeBars("drugCount");
+                        makeLabels("drugCount");
+                        //criteria = "drugCount";
+                    }
+                    */
+                }
+                else if (sortCondition == "orderPatient"){
+                    i = 4;
+                    /*
+                    if (criteria != "orderPatient"){
+                        makeBars("orderPatient");
+                        makeLabels("orderPatient");
+                        //criteria = "orderPatient";
+                    }
+                    */
+                }
                 
                 sortOrder = !sortOrder;
                 //Sort BarGraphs by magnitude
                 svg.selectAll("rect")
-                .sort(function(a,b) {
+                .sort(function(a,b) {    
+                    var aInt = parseInt(a[i]);
+                    var bInt = parseInt(b[i]);
                     if (sortOrder) {
-                        return d3.ascending(b[i],a[i]); //Sorting BARS by #Orders
+                        return d3.ascending(bInt,aInt); //Sorting BARS by #Orders
                     }
                     else {
-                        return d3.ascending(a[i],b[i]);
+                        return d3.ascending(aInt,bInt);
                     }
                 })
                 //TRANSITIONS
                 .transition()
                 .duration(1000)
                 .attr("y", function(d, j) {
-                    return yScale(j*40);
+                    return yScale(j);
                 })
 
                 //Sort Drug Labels
                 svg.selectAll("text")
                 .sort(function(a,b){
+                    var aInt = parseInt(a[i]);
+                    var bInt = parseInt(b[i]);
                     if (sortOrder) {
-                        return d3.ascending(b[i],a[i]); // Sorting LABELS by #Patients
+                        return d3.ascending(bInt,aInt); // Sorting LABELS by #Patients
                     }
                     else {
-                        return d3.ascending(a[i],b[i]);
+                        return d3.ascending(aInt,bInt);
                     }
                 })
                 .transition()
                 .duration(1000)
                 .attr("y", function(d, j) {
-                    return (yScale(j*40));
+                    return (yScale(j)+buffer);
                 })
             };
 
@@ -361,7 +399,7 @@
 
             d3.select("#sortPOE button")
                 .on("click", function() {
-                    sortBars("patientOrder");
+                    sortBars("orderPatient");
                     getEnrichments();
                 })
             
