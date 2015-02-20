@@ -10,7 +10,7 @@
         <link rel="stylesheet" href="http://code.jquery.com/ui/1.11.1/themes/smoothness/jquery-ui.css">
         <script src="http://code.jquery.com/jquery-1.10.2.js"></script>
         <script src="http://code.jquery.com/ui/1.11.1/jquery-ui.js"></script>
-        
+        <script type='text/javascript' src='DAT.GUI.min.js'></script>
         
         <style type="text/css">
             /*Modify Rectangles for tooltip - small overlays over data*/
@@ -101,21 +101,30 @@
         <div id="queryBox">
             <input type="text" id="txt_name">
         </div>
+        
         <!--BUTTON - Sorts Data-->
         <div class="buttonex" id="sort">
             <button type="button">Sort By Order Count</button>
         </div>
         
         <div class="buttonex" id="sortPOE">
-            <button type="button">Sort by Order to Patient Ratio</button>
+            <button type="button">Sort by Order:Patient Ratio</button>
         </div>
         <!--<div class="glasses"><img src="lab_beaker_full.png"></div>-->
-            
+        
+        
         <div id="tooltip" class="hidden">
             <p><strong>Drug Data</strong></p>
             <p><span id="value">100</span></p>
         </div>
         
+        <textarea id="te0" name="NAME" cols=35 rows=1></textarea> 
+        <textarea id="te1" name="NAME" cols=35 rows=1></textarea> 
+        <textarea id="te2" name="NAME" cols=35 rows=1></textarea> 
+        <textarea id="te3" name="NAME" cols=35 rows=1></textarea> 
+        <textarea id="te4" name="NAME" cols=35 rows=1></textarea> 
+    
+        <!--
         <div id="enrichment">
             <input type="text" id="e1" style="width: 90%">
         </div>
@@ -131,8 +140,16 @@
         <div id="enrichment">
             <input type="text" id="e5" style="width: 90%">
         </div>
+
+        <select name="NAME">
+        <option id="count">Sort by Count</option>
+        <option id="OP Ratio">Sort by Order:Patient Ratio</option>
+        </select>  
+
+        -->
         
 		<script type="text/javascript"> 
+            
             var MyPage = (function($) { 
                 var dL = [
                     <?php
@@ -142,7 +159,7 @@
                             while (($line = fgets($myfile)) !== false) {
                                 $x = explode(chr(9), $line); // Tab = Ascii 9
                                 $CODE = $x[0];
-                                $PRODUCT_NAME = $x[1];
+                                $PRODUCT_NAME = strtolower($x[1]);
                                 $NUM_ORDERS = $x[2];
                                 $NUM_PATIENTS = $x[3];
                                 $OrderPatient_ENRICHMENT = $x[2]/$x[3];
@@ -168,16 +185,12 @@
                 }
             })(jQuery); // Puts correct version of jQuery into MyPage module through function($) 
             
-
-            
-            
             //Creating the Search Box
             var queryList = [];
-            
-            var criteria = "drugCount";
-            
+
             $(document).ready(function(){
                 $('#txt_name').val('query');
+                
                 var query;
                 var subStr;
                 var match;
@@ -189,7 +202,7 @@
                 $("#txt_name").change(function(){
                     $('svg').empty(); // Clears last query
                     queryList = [];
-                    query = $('#txt_name').val();
+                    query = $('#txt_name').val().toLowerCase();
                     queryLen = query.length;
                     /*  MyPage.availableTags - Array (MyPage.availableTags.length = 1)
                         MyPage.availableTags[0] - Array of size MyPage.availableTags[0].length
@@ -216,6 +229,7 @@
                     };   
                     makeBars("drugCount");
                     makeLabels("drugCount");
+                    sortBars("drugCount");
                 });
             });
             
@@ -264,11 +278,11 @@
                 })
                 var list = 
                     drugArr[0] + "; " 
-                + drugArr[1] + "; " 
-                + drugArr[2] + "; " 
-                + drugArr[3] + "; "
-                + drugArr[4];
-
+                    + drugArr[1] + "; " 
+                    + drugArr[2] + "; " 
+                    + drugArr[3] + "; "
+                    + drugArr[4];
+                
                 return list;
             }
             
@@ -276,39 +290,53 @@
             var makeBars = function(visual) {     
                 if (visual == "drugCount"){i = 3}
                 else if (visual == "orderPatient"){i = 4}
-
                 svg.selectAll("rect")
                     .data(queryList)
                     .enter()
                     .append("rect")
                     .attr({
-                        width: function(d) { return (xScale(parseInt(d[i])))},//# of Orders
+                        width: function(d) { return (xScale(parseInt(d[i])) * [(i%3) + .001] * 1000); },//# of Orders
                         height: barHeight,
                         fill: function(d){
-                            return "rgb(10, 150, " + (Math.floor(d[i]/2)) + ")";
+                            return "rgb(10, 150, " + (Math.floor((d[i]/2)* [(i%3) + .001] * 150)) + ")";
                         },
                         y: function(d, j) {return (yScale(j))}, // Adjust input for proper spacing
                         x: buffer
                     })
+                    //Adding the mouseOver function - Hover to highlight
+                    .on("mouseover", function(d) {
+                        var xPosition = (xScale(d3.select(this).attr("width")));
+                        var yPosition = 300 + parseFloat(d3.select(this).attr("y"));
 
-                //Adding the mouseOver function - Hover to highlight
-                .on("mouseover", function(d) {
-                    var xPosition = (xScale(d3.select(this).attr("width")));
-                    var yPosition = 300+ parseFloat(d3.select(this).attr("y"));
-                    
-                    d3.select("#tooltip")
-                        .style("right", xPosition + "px")
-                        .style("top", yPosition + "px")
-                        .select("#value")
-                        .text(getRelativeEnrichments(d, queryList));
-                        //.text(d)
+                        d3.select("#tooltip")
+                            .style("right", xPosition + "px")
+                            .style("top", yPosition + "px")
+                            .select("#value")
+                            .text(getRelativeEnrichments(d, queryList));
+                            //.text(d)
 
-                    d3.select("#tooltip").classed("hidden", false);
-                })
+                        d3.select("#tooltip").classed("hidden", false);
+                    })
 
-                .on("mouseout", function() {
-                    d3.select("#tooltip").classed("hidden", true);
-                })
+                    .on("mouseout", function() {
+                        d3.select("#tooltip").classed("hidden", true);
+                    })
+            }
+
+            
+            var changeCriteria = function(visual) {
+                svg.selectAll("rect")
+                    .remove()
+                svg.selectAll("text")
+                    .remove()
+                if (visual == "orderPatient"){
+                    makeBars("orderPatient");
+                    makeLabels("orderPatient");
+                }
+                else if (visual == "drugCount"){
+                    makeBars("drugCount");
+                    makeLabels("drugCount");
+                }
             }
 
             //Function to makeLabels
@@ -316,17 +344,17 @@
                 if (visual == "drugCount"){i = 3}
                 else if (visual == "orderPatient"){i = 4}
                 svg.selectAll("text")
-                .data(queryList)
-                .enter()
-                .append("text")
-                .text(function(d) {return d[1]})//Product Name
-                .attr({
-                    x: buffer,
-                    y: function(d,j) {return yScale(j)+buffer},
-                    "font-size": 14,
-                    fill: "blue",
-                    v: function(d) { return (xScale(parseInt(d[i])))}
-                })
+                    .data(queryList)
+                    .enter()
+                    .append("text")
+                    .text(function(d) {return d[1]})//Product Name
+                    .attr({
+                        x: buffer,
+                        y: function(d,j) {return yScale(j)+buffer},
+                        "font-size": 14,
+                        fill: "blue",
+                        //v: function(d) { return (xScale(parseInt(d[i])))}
+                    })
             }
             //Sorting Feature - By magnitude of associated constant with drug
             var sortOrder = false;
@@ -334,50 +362,43 @@
             var sortBars = function(sortCondition) {
                 if (sortCondition == "drugCount"){
                     i = 3;
-                    /*
-                    if (criteria != "drugCount"){
-                        makeBars("drugCount");
-                        makeLabels("drugCount");
-                        //criteria = "drugCount";
-                    }
-                    */
                 }
                 else if (sortCondition == "orderPatient"){
                     i = 4;
-                    /*
-                    if (criteria != "orderPatient"){
-                        makeBars("orderPatient");
-                        makeLabels("orderPatient");
-                        //criteria = "orderPatient";
-                    }
-                    */
                 }
-                
                 sortOrder = !sortOrder;
+                
                 //Sort BarGraphs by magnitude
                 svg.selectAll("rect")
-                .sort(function(a,b) {    
-                    var aInt = parseInt(a[i]);
-                    var bInt = parseInt(b[i]);
-                    if (sortOrder) {
-                        return d3.ascending(bInt,aInt); //Sorting BARS by #Orders
-                    }
-                    else {
-                        return d3.ascending(aInt,bInt);
-                    }
-                })
-                //TRANSITIONS
-                .transition()
-                .duration(1000)
-                .attr("y", function(d, j) {
-                    return yScale(j);
-                })
+                    .sort(function(a,b) {    
+                        var aInt = parseInt(a[i]);
+                        var bInt = parseInt(b[i]);
+                        if (sortOrder) {
+                            return d3.ascending(bInt,aInt); //Sorting BARS by #Orders
+                        }
+                        else {
+                            return d3.ascending(aInt,bInt);
+                        }
+                    })
+                    //TRANSITIONS
+                    .transition()
+                    .duration(1000)
+                    .attr("y", function(d, j) {
+                        return yScale(j);
+                    })
 
                 //Sort Drug Labels
                 svg.selectAll("text")
                 .sort(function(a,b){
-                    var aInt = parseInt(a[i]);
-                    var bInt = parseInt(b[i]);
+                    var aInt;
+                    var bInt;
+                    if (i==3){
+                        aInt = parseInt(a[i]);
+                        bInt = parseInt(b[i]);
+                    }
+                    else
+                        aInt = a[i];
+                        bInt = b[i];
                     if (sortOrder) {
                         return d3.ascending(bInt,aInt); // Sorting LABELS by #Patients
                     }
@@ -391,16 +412,33 @@
                     return (yScale(j)+buffer);
                 })
             };
-
+            
+            var criteria = "dC";
+                
             d3.select("#sort button")
                 .on("click", function() {
-                    sortBars("drugCount");
+                    if (criteria != "dC") {changeCriteria("drugCount"); criteria = "dC";}
+                    sortBars("drugCount");                    
                 })
-
+            
             d3.select("#sortPOE button")
-                .on("click", function() {
+            .on("click", function() {
+                if (criteria != "oP") {changeCriteria("orderPatient"); criteria = "oP";}
+                sortBars("orderPatient");
+                getEnrichments();
+            })
+            
+            d3.select("#count")
+                .on("select", function() {
+                    if (criteria != "oP") {changeCriteria("orderPatient"); criteria = "oP";}
                     sortBars("orderPatient");
                     getEnrichments();
+                })
+            
+            d3.select("#OP Ratio")
+                .on("click", function() {
+                    if (criteria != "dC") {changeCriteria("drugCount"); criteria = "dC";}
+                    sortBars("drugCount");                    
                 })
             
             var getEnrichments = function() {
@@ -417,11 +455,20 @@
                         "Patient: " + queryList[i][3] + "; "; 
 
                 }
+                
+                $('#te0').val(maxEnrichment[0]);
+                $('#te1').val(maxEnrichment[1]);
+                $('#te2').val(maxEnrichment[2]);
+                $('#te3').val(maxEnrichment[3]);
+                $('#te4').val(maxEnrichment[4]);
+        
+                /*
                 $('#e1').val(maxEnrichment[0]);
                 $('#e2').val(maxEnrichment[1]);
                 $('#e3').val(maxEnrichment[2]);
                 $('#e4').val(maxEnrichment[3]);
                 $('#e5').val(maxEnrichment[4]);
+                */
             }
 	    </script>
 	</body>
