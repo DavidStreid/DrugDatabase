@@ -14,7 +14,17 @@
         <script type='text/javascript' src='DAT.GUI.min.js'></script>
 
         <style type="text/css">
-
+            rect {
+                -moz-transition: all 0.3s;
+                -o-transition: all 0.3s;
+                -webkit-transition: all 0.3s;
+                transition: all 0.3s;
+            }
+            /*hover function*/
+            rect:hover {
+                fill: orange;
+            }
+            
             body {
                 background-image:url(gray_jean/gray_jean.png)
             }
@@ -66,8 +76,56 @@
                     ?>    
                 ];
             
-                console.log(dL);
+                console.log(typeof(parseInt(dL[0][2][2])));
             
+            //Define Variables
+            barHeight = 20;
+            var w = 5000;
+            var h = 10; // Height to include every entry
+            var buffer = 15;
+            var textbuffer = 40
+            var svg = d3.select("body")
+            .append("svg")
+            .attr({
+                width: w,
+                height: h,
+            });
+            
+            //Function to make Bars
+            var makeBars = function() {     
+                svg.selectAll("rect")
+                .data(dL)
+                .enter()
+                .append("rect")
+                .attr({
+                    width: function(d,i) {return parseInt(dL[0][i+1][2])},
+                    height: 10,
+                    fill: function(d){
+                        return "rgb(100, 150, 100)";
+                    },
+                    y: function(d, i) {return i*1000}, // Adjust input for proper spacing
+                    x: 100
+                })
+                //Adding the mouseOver function - Hover to highlight
+                .on("mouseover", function(d) {
+                    var xPosition = (xScale(d3.select(this).attr("width")));
+                    var yPosition = 300 + parseFloat(d3.select(this).attr("y"));
+
+                    d3.select("#tooltip")
+                    .style("right", xPosition + "px")
+                    .style("top", yPosition + "px")
+                    .select("#value")
+                    .text(getRelativeEnrichments(d, queryList));
+                    //.text(d)
+
+                    d3.select("#tooltip").classed("hidden", false);
+                })
+
+                .on("mouseout", function() {
+                    d3.select("#tooltip").classed("hidden", true);
+                })
+            }
+
+            makeBars();
         </script>
     </body>
-</html>
