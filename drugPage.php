@@ -35,10 +35,35 @@
                 top: 2%;
                 font-size: 50px;
             }
+            
         </style>
     </head>
     <body>
-        <script type="text/javascript"> 
+        
+        <body>
+            <table id="myTable" border="1">
+                <tr>
+                    <td>DRUG</td>
+                    <td>Adverse Risk</td>
+                    <td>No Adverse Risk</td>
+                </tr>
+                <tr>
+                    <td>Exposed to Drug</td>
+                    <td>    </td>
+                    <td>    </td>
+                </tr>
+                <tr>
+                    <td>Not Exposed to Drug</td>
+                    <td>    </td>
+                    <td>    </td>
+                </tr>
+            </table>
+            <form>
+                <input type="button" onclick="changeContent()" value="Next Drug">
+            </form>
+        </body>
+        
+        <script type="text/javascript">             
                 var dL = [
                     <?php
                         $drugList = array();
@@ -76,7 +101,7 @@
                     ?>    
                 ];
             
-                console.log(typeof(parseInt(dL[0][2][2])));
+                //console.log(typeof(parseInt(dL[0][2][2])));
             
             //Define Variables
             barHeight = 20;
@@ -91,15 +116,21 @@
                 height: h,
             });
             
+            //console.log(dL[0]);
             //Function to make Bars
             var makeBars = function() {     
                 svg.selectAll("rect")
-                .data(dL)
+                .data(dL[0])
                 .enter()
                 .append("rect")
                 .attr({
-                    width: function(d,i) {return parseInt(dL[0][i+1][2])},
-                    height: 10,
+                    //width: 100,
+                    width: function(d,i) {
+                        if (!isNaN(parseInt(d[8]))){
+                            return parseInt(d[8])*100
+                        }
+                    }, //GROUND_TRUTH = d[5], LOGRR = d[6] 
+                    height: 100000,
                     fill: function(d){
                         return "rgb(100, 150, 100)";
                     },
@@ -127,5 +158,16 @@
             }
 
             makeBars();
+            
+            var i = 0
+            function changeContent(){
+
+                var x=document.getElementById('myTable').rows
+                var header =x[0].cells   // 
+                header[0].innerHTML=dL[0][i][0]
+                var drug = x[1].cells
+                drug[0].innerHTML = "drug"
+                drug[1].innerHTML = "drug2"
+            }
         </script>
     </body>
